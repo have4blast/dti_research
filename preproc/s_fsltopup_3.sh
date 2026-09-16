@@ -2,7 +2,21 @@
 
 RAW_DIR=/media/sf_share/MRI_MPILMBB_LEMON/MRI_Raw
 PREPROC_DIR=/home/brain/dti_research/preproc
-subj_id=sub-032301
+# Accept subject id as first arg, default to sub-032301
+subj_id=${1:-sub-032301}
+
+# set subj_path to RAW_DIR (adjust if your raw layout is different)
+subj_path=${RAW_DIR}/${subj_id}
+
+# quick check: ensure expected fmap files exist in raw data
+pa_fmap=${subj_path}/ses-01/fmap/${subj_id}_ses-01_acq-SEfmapDWI_dir-PA_epi.nii.gz
+ap_fmap=${subj_path}/ses-01/fmap/${subj_id}_ses-01_acq-SEfmapDWI_dir-AP_epi.nii.gz
+if [[ ! -f "${pa_fmap}" || ! -f "${ap_fmap}" ]]; then
+    echo "ERROR: expected fmap files not found for ${subj_id}:" >&2
+    echo "  Missing: ${pa_fmap}" >&2
+    echo "  Missing: ${ap_fmap}" >&2
+    exit 1
+fi
 
 echo "===== Processing ${subj_id} ====="
 
