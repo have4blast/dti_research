@@ -30,34 +30,64 @@ cp "${PREPROC_DIR}/${SUBJECT_ID}/T1w_in_dwi_space_highres.nii.gz" .
 # cp "${PREPROC_DIR}/test/T1w_in_dwi_space_highres.nii.gz" .
 
 # ================================
-# Step #2: Generate 5TT image using FreeSurfer-based segmentation (preferred)
-# If FreeSurfer is not configured, set USE_FSL_FALLBACK=1 to use FSL-based 5ttgen instead.
-# You can also point to a FreeSurferColorLUT.txt via FREESURFER_LUT env var.
+# Step #2: Generate 5TT image
+# The copied T1w image is an intensity image, so the FSL backend is the
+# appropriate default. The FreeSurfer backend requires a FreeSurfer aseg
+# parcellation image, not the subject directory or the T1w image.
 # ================================
 echo "[Step 2/3] Generating 5TT.mif..."
 
-# Determine which backend to use for 5ttgen
-USE_FSL_FALLBACK=${USE_FSL_FALLBACK:-0}
-FREESURFER_LUT=${FREESURFER_LUT:-}
+# Set TTGEN_METHOD=freesurfer to use an existing FreeSurfer subject.
+TTGEN_METHOD=${TTGEN_METHOD:-fsl}
 
-# if [[ -n "${FREESURFER_HOME:-}" ]]; then
-#     echo "FreeSurfer detected via FREESURFER_HOME=${FREESURFER_HOME}. Using freesurfer backend."
-#     TTGEN_CMD=(5ttgen freesurfer T1w_in_dwi_space_highres.nii.gz 5TT.mif -nocleanup -force)
-# elif [[ -n "${FREESURFER_LUT}" && -f "${FREESURFER_LUT}" ]]; then
-#     echo "FREESURFER_HOME not set, but FREESURFER_LUT provided (${FREESURFER_LUT}). Using freesurfer backend with -lut."
-#     TTGEN_CMD=(5ttgen freesurfer T1w_in_dwi_space_highres.nii.gz 5TT.mif -lut "${FREESURFER_LUT}" -nocleanup -force)
-# elif [[ "${USE_FSL_FALLBACK}" == "1" ]]; then
-echo "FREESURFER_HOME not set. USE_FSL_FALLBACK=1 -> using FSL backend for 5ttgen."
-TTGEN_CMD=(5ttgen fsl T1w_in_dwi_space_highres.nii.gz 5TT.mif -nocleanup -force)
-# else
-# 	echo "[ERROR] FreeSurfer not configured (FREESURFER_HOME unset) and USE_FSL_FALLBACK!=1." >&2
-# 	echo "Set FREESURFER_HOME by sourcing FreeSurfer setup (e.g. source $HOME/freesurfer/SetUpFreeSurfer.sh)," >&2
-# 	echo "or set USE_FSL_FALLBACK=1 to use the FSL-based 5ttgen backend, or set FREESURFER_LUT to a FreeSurferColorLUT.txt." >&2
-# 	exit 2
-# fi
+case "${TTGEN_METHOD}" in
+    fsl)
+        echo "Using FSL backend with T1w_in_dwi_space_highres.nii.gz."
+        TTGEN_CMD=(5ttgen fsl T1w_in_dwi_space_highres.nii.gz 5TT.mif -nocleanup -force)
+        ;;
+    freesurfer)
+        FS_ASEG=${FS_ASEG:-/home/brain/dti_research/freesurfer_subjects/${SUBJECT_ID}/mri/aseg.auto.mgz}
+        DWI_TEMPLATE=${DWI_TEMPLATE:-${PREPROC_DIR}/${SUBJECT_ID}/${SUBJECT_ID}_ses-01_dir-PA_dwi_aftereddy.mif}
+        T1_TO_DWI_MRTRIX=${T1_TO_DWI_MRTRIX:-${PREPROC_DIR}/${SUBJECT_ID}/anat2dwialign_mrtrix.txt}
+        if [[ ! -f "${FS_ASEG}" ]]; then
+            echo "[ERROR] FreeSurfer aseg image not found: ${FS_ASEG}" >&2
+            exit 2
+        fi
+        if [[ -z "${FREESURFER_HOME:-}" ]]; then
+            echo "[ERROR] FREESURFER_HOME is not set; source SetUpFreeSurfer.sh first." >&2
+            exit 2
+        fi
+        if [[ ! -f "${DWI_TEMPLATE}" ]]; then
+            echo "[ERROR] DWI template not found: ${DWI_TEMPLATE}" >&2
+            exit 2
+        fi
+        if [[ ! -f "${T1_TO_DWI_MRTRIX}" ]]; then
+            echo "[ERROR] T1-to-DWI MRtrix transform not found: ${T1_TO_DWI_MRTRIX}" >&2
+            echo "Run preproc/s_T1wflirt_5.sh ${SUBJECT_ID} first, or set T1_TO_DWI_MRTRIX." >&2
+            exit 2
+        fi
+        echo "Using FreeSurfer parcellation image: ${FS_ASEG}"
+        echo "Generating native-space FreeSurfer 5TT: 5TT_native.mif"
+        TTGEN_CMD=(5ttgen freesurfer "${FS_ASEG}" 5TT_native.mif -nocleanup -force)
+        ;;
+    *)
+        echo "[ERROR] TTGEN_METHOD must be 'fsl' or 'freesurfer': ${TTGEN_METHOD}" >&2
+        exit 2
+        ;;
+esac
 
 echo "Running: ${TTGEN_CMD[*]}"
 "${TTGEN_CMD[@]}"
+
+if [[ "${TTGEN_METHOD}" == "freesurfer" ]]; then
+    echo "Transforming FreeSurfer 5TT to DWI space with nearest-neighbour interpolation..."
+    mrtransform 5TT_native.mif \
+        -linear "${T1_TO_DWI_MRTRIX}" \
+        -template "${DWI_TEMPLATE}" \
+        -interp nearest \
+        5TT.mif \
+        -force
+fi
 
 # ================================
 # Step #3: Convert for visualization

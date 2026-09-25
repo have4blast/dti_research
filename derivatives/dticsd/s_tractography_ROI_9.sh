@@ -2,12 +2,22 @@
 # ================================
 # Set variables
 # ================================
-SUBJECT_ID="sub-032301"
+SUBJECT_ID=${1:-sub-032301}
 SESSION_ID="ses-01"
 PREPROC_DIR="/home/brain/dti_research/preproc/${SUBJECT_ID}"
 DERIV_DIR="/home/brain/dti_research/derivatives/tractography/${SUBJECT_ID}"
 mkdir -p "${DERIV_DIR}"
 cd "${DERIV_DIR}"
+
+# Optional overrides for subject-specific MRtrix/FreeSurfer-derived inputs.
+# Defaults preserve the original command behavior.
+TRACT_INPUT=${TRACT_INPUT:-${PREPROC_DIR}/${SUBJECT_ID}_ses-01_dir-PA_dwi_aftereddy.mif}
+WM_FOD=${WM_FOD:-/home/brain/dti_research/derivatives/dticsd/WM_FOD_PA.mif}
+ACT_5TT=${ACT_5TT:-}
+ACT_ARGS=()
+if [[ -n "${ACT_5TT}" ]]; then
+    ACT_ARGS=(-act "${ACT_5TT}")
+fi
 
 echo "======================================="
 echo "Running tractography for ${SUBJECT_ID}"
@@ -23,9 +33,10 @@ echo "======================================="
 # Step #2: DTI deterministic tractography
 # ================================
 echo "[Step 2/5] Running DTI deterministic tractography..."
-tckgen ${PREPROC_DIR}/sub-032301_ses-01_dir-PA_dwi_aftereddy.mif \
+tckgen "${TRACT_INPUT}" \
     -algorithm iFOD2 \
-    -seed_dynamic /home/brain/dti_research/derivatives/dticsd/WM_FOD_PA.mif \
+    "${ACT_ARGS[@]}" \
+    -seed_dynamic "${WM_FOD}" \
     -maxlength 250 \
     -select 300000 \
     -nthreads 4 \

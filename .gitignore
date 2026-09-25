@@ -7,9 +7,13 @@ raw/
 *.mat
 *.vtk
 *.bvars
+*.mif
+*.log
 derivatives/dticsd/sub-*
 derivatives/pyafq/sub-*
 derivatives/tractography/sub-*
+freesurfer_subjects/sub-*
+image/*
+first/*
 preproc/sub-*
 preproc/test
-*.mif
