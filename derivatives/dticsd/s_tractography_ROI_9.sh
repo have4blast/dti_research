@@ -5,14 +5,15 @@
 SUBJECT_ID=${1:-sub-032301}
 SESSION_ID="ses-01"
 PREPROC_DIR="/home/brain/dti_research/preproc/${SUBJECT_ID}"
-DERIV_DIR="/home/brain/dti_research/derivatives/tractography/${SUBJECT_ID}"
+DERIV_DIR="/home/brain/dti_research/derivatives/dticsd/${SUBJECT_ID}"
 mkdir -p "${DERIV_DIR}"
 cd "${DERIV_DIR}"
 
 # Optional overrides for subject-specific MRtrix/FreeSurfer-derived inputs.
-# Defaults preserve the original command behavior.
-TRACT_INPUT=${TRACT_INPUT:-${PREPROC_DIR}/${SUBJECT_ID}_ses-01_dir-PA_dwi_aftereddy.mif}
-WM_FOD=${WM_FOD:-/home/brain/dti_research/derivatives/dticsd/WM_FOD_PA.mif}
+# TRACT_INPUT defaults to the subject's WM FOD (not raw DWI) so iFOD2 gets a
+# proper FOD input even when the caller does not set TRACT_INPUT explicitly.
+WM_FOD=${WM_FOD:-${DERIV_DIR}/WM_FOD_PA_${SUBJECT_ID}.mif}
+TRACT_INPUT=${TRACT_INPUT:-${WM_FOD}}
 ACT_5TT=${ACT_5TT:-}
 ACT_ARGS=()
 if [[ -n "${ACT_5TT}" ]]; then

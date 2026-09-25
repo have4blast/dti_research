@@ -1,9 +1,15 @@
-# Step: Change angle parameters (for test subject)
+#!/bin/bash
+# Step: Change angle parameters
 # Defaults preserve the original test-file behavior. Override these variables
 # to use subject-specific or FreeSurfer-derived ROI inputs.
-WM_FOD=${WM_FOD:-WM_FOD_test.mif}
-WM_MASK=${WM_MASK:-WM_mask_test.mif}
-SEED_IMAGE=${SEED_IMAGE:-LV1_test.mif}
+SUBJECT_ID=${1:-sub-032301}
+DERIV_DIR="/home/brain/dti_research/derivatives/dticsd/${SUBJECT_ID}"
+mkdir -p "${DERIV_DIR}"
+cd "${DERIV_DIR}"
+
+WM_FOD=${WM_FOD:-${DERIV_DIR}/WM_FOD_PA_${SUBJECT_ID}.mif}
+WM_MASK=${WM_MASK:-${DERIV_DIR}/WM_mask.mif}
+SEED_IMAGE=${SEED_IMAGE:-${DERIV_DIR}/seed_image.mif}
 OVERWRITE=${OVERWRITE:-0}
 FORCE_ARGS=()
 if [[ "${OVERWRITE}" == "1" ]]; then

@@ -618,7 +618,7 @@ for subdir in "$RAW_DIR"/sub-*; do
     #   CSF_FOD_PA.mif
     # ========================================================
 
-    STEP7_OUTPUT="${SUBJECT_DTICS_DIR}/WM_FOD_PA.mif"
+    STEP7_OUTPUT="${SUBJECT_DTICS_DIR}/WM_FOD_PA_${sub}.mif"
 
 
     if [[ "$SKIP_EXISTING" == true && -e "$STEP7_OUTPUT" ]]; then

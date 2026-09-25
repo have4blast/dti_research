@@ -250,7 +250,9 @@ TRACT_INPUT=/home/brain/dti_research/derivatives/dticsd/sub-032302/WM_FOD_PA_sub
 ./derivatives/dticsd/s_tractography_ROI_9.sh sub-032302
 ```
 
-`TRACT_INPUT` を指定しない場合は、元のスクリプトと同じDWIファイルを入力します。
+`TRACT_INPUT` を指定しない場合は、`WM_FOD`（既定値: 被験者別の `WM_FOD_PA_<被験者ID>.mif`）が
+そのまま使われます。以前は指定しない場合に元のDWIファイルが入力されてしまう既知の不整合が
+ありましたが、現在は修正済みです。
 
 ```bash
 tckgen <input> \
@@ -281,43 +283,43 @@ tckgen <input> \
 出力先は、スクリプトの設定では以下です。
 
 ```text
-derivatives/tractography/<被験者ID>/
+derivatives/dticsd/<被験者ID>/
 ```
 
-なお、現在の有効なコマンドには次の確認事項があります。`iFOD2` の入力には通常
-白質FOD（`WM_FOD_PA_<被験者ID>.mif`）を指定しますが、スクリプトではDWIファイルが
-指定されています。また、`-seed_dynamic` のFODパスが被験者別ディレクトリではなく
-固定パスになっています。実行時には、入力を被験者別のWM FODへ変更してください。
+現在は `TRACT_INPUT`・`WM_FOD` とも既定で被験者別ディレクトリの
+`WM_FOD_PA_<被験者ID>.mif` を参照するため、`TRACT_INPUT` を指定しなくても
+`iFOD2` の入力・シードともに白質FODが使われます。
 
 ### 全脳CSDトラクトグラフィー（s_tractography_wholebrain_10.sh）
 
 `s_tractography_wholebrain_10.sh` は、Step 5で生成した白質FODを入力として、全脳の
-確率的トラクトグラフィーを実行します。現在有効なコマンドは次のとおりです。
+確率的トラクトグラフィーを実行します。被験者IDを引数で渡すと、`WM_FOD`・`ACT_5TT`・
+`TCK_OUTPUT` は被験者別ディレクトリ（`derivatives/dticsd/<被験者ID>/`）の既定パスを
+自動的に使用します。
 
 ```bash
-tckgen WM_FOD_test.mif \
+./derivatives/dticsd/s_tractography_wholebrain_10.sh sub-032302
+```
+
+これは内部的に次のコマンドと等価です。
+
+```bash
+tckgen WM_FOD_PA_sub-032302.mif \
 	-algorithm iFOD2 \
+	-act 5TT.mif \
 	-backtrack \
 	-crop_at_gmwmi \
+	-seed_dynamic WM_FOD_PA_sub-032302.mif \
 	-maxlength 250 \
 	-step 0.8 \
 	-select 500 \
 	-nthreads 4 \
-	CSD_Prob_ACT_500_test.tck
+	CSD_Prob_ACT_500_sub-032302.tck
 ```
 
-`WM_FOD_test.mif` はStep 5（MSMT-CSD）のテスト用WM FOD出力です。被験者別に実行
-する場合は、`WM_FOD_PA_<被験者ID>.mif` などのStep 5出力へ置き換えます。
-
-FreeSurfer由来の5TTを使うACT実行例は以下のとおりです。`ACT_5TT` を指定しない
-場合は、元のコマンドと同じく `-act` なしで実行されます。
-
-```bash
-WM_FOD=/home/brain/dti_research/derivatives/dticsd/sub-032302/WM_FOD_PA_sub-032302.mif \
-ACT_5TT=/home/brain/dti_research/derivatives/dticsd/sub-032302/5TT.mif \
-TCK_OUTPUT=/home/brain/dti_research/derivatives/tractography/sub-032302/CSD_Prob_ACT_500.tck \
-./derivatives/dticsd/s_tractography_wholebrain_10.sh
-```
+`ACT_5TT` は既定で被験者別の `5TT.mif` を参照するため、`5TT.mif` が存在すれば
+指定しなくても `-act` が付与されます。5TTのパスを変える場合や無効化したい場合は
+環境変数で明示的に上書きしてください（空文字を指定するとACTなしで実行されます）。
 
 主なオプションと出力は以下のとおりです。
 
@@ -331,27 +333,11 @@ TCK_OUTPUT=/home/brain/dti_research/derivatives/tractography/sub-032302/CSD_Prob
 | `-select 500` | 500本のストリームラインを生成 |
 | `CSD_Prob_ACT_500_test.tck` | 全脳トラクトグラフィーの出力 |
 
-ファイル名にはACTを示す `ACT` が含まれていますが、現在有効なコマンドには
-`-act 5TT.mif` が指定されていません。そのため、厳密な意味でACTを有効にするには、
-以下のように5TT画像を指定する必要があります。
-
-```bash
-tckgen WM_FOD_test.mif \
-	-algorithm iFOD2 \
-	-act 5TT.mif \
-	-backtrack \
-	-crop_at_gmwmi \
-	-seed_dynamic WM_FOD_test.mif \
-	-maxlength 250 \
-	-step 0.8 \
-	-select 300000 \
-	-nthreads 4 \
-	CSD_Prob_ACT_300000_test.tck
-```
-
-この場合、`5TT.mif` はStep 6で生成したWM、GM、CSFなどの組織情報を用いて、解剖学的に妥当な
-ストリームライン生成を制約します。5TT、WM FOD、シード画像は同じ空間・グリッドに
-そろえてから使用してください。
+現在は `ACT_5TT` が既定で被験者別の `5TT.mif` を参照するため、5TTが存在する状態で
+実行すれば `-act 5TT.mif` が自動的に付与され、ファイル名の `ACT` どおり解剖学的制約
+付きトラクトグラフィーが行われます。`5TT.mif` はStep 6で生成したWM、GM、CSFなどの
+組織情報を用いて、解剖学的に妥当なストリームライン生成を制約します。5TT、WM FOD、
+シード画像は同じ空間・グリッドにそろえてから使用してください。
 
 ### トラクトグラフィーのパラメータ比較（s_tractography_ROI_parameters_11.sh）
 
